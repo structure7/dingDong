@@ -35,6 +35,8 @@ int postBlynkMillis;                    // Millis when Blynk connection establis
 int preRtcMillis;                       // Millis when RTC connection started.
 int postRtcMillis;                      // Millis when RTC connection established.
 
+int pushNotificationStatus;
+
 SimpleTimer timer;
 WidgetRTC rtc;
 WidgetTerminal terminal(V0);
@@ -84,8 +86,9 @@ void setup()
   preRtcMillis = millis();
   rtc.begin();
 
-  timer.setInterval(5, relayWatch);
+  timer.setInterval(100, relayWatch);
   timer.setInterval(1000L, setClockTime);
+
   ringDisplay = timer.setInterval(2000L, ringDisplayFunc);  // Create the timer, then...
   timer.disable(ringDisplay);                               // disable it so it can be started when I need it.
 }
@@ -97,12 +100,31 @@ void loop()
   ArduinoOTA.handle();
 }
 
+BLYNK_CONNECTED() {
+  {
+    Blynk.syncVirtual(V8);
+  }
+}
+
 // Watched the relay for closure (indicated the doorbell is pressed)
 void relayWatch() {
-  if ( (digitalRead(bellRelay) == LOW || testButton == 1) && notifyFlag == 0) {
+  if (digitalRead(bellRelay) == LOW && notifyFlag == 0) {
     notifyFlag = 1;
-    Blynk.notify(String(currentTime) + " Doorbell rang.");
+
+    if (pushNotificationStatus == 1) {
+      Blynk.notify(String(currentTime) + " Doorbell rang.");
+    }
+
     sendTerminal();
+  }
+  else if (testButton == 1 && notifyFlag == 0) {
+    notifyFlag = 1;
+
+    if (pushNotificationStatus == 1) {
+      Blynk.notify("DOORBELL TEST ONLY");
+    }
+
+    sendTerminalTest();
   }
   else if (millis() > (ringTime + 5000) && notifyFlag == 1) {
     notifyFlag = 0;
@@ -111,13 +133,8 @@ void relayWatch() {
 
 void sendTerminal() {
   ringString = currentTime;
-  
-  if (testButton == 1) {
-    terminal.println(String(currentTime) + " Ding dong (TEST)!");
-  }
-  else {
-    terminal.println(String(currentTime) + " Ding dong!");
-  }
+
+  terminal.println(String(currentTime) + " Ding dong!");
 
   terminal.flush();
 
@@ -125,9 +142,13 @@ void sendTerminal() {
   currentRingSec = (millis() / 1000);
   currentRingMin = (millis() / 1000 / 60);
 
-  testButton = 0;
-
   timer.enable(ringDisplay);
+}
+
+void sendTerminalTest() {
+  terminal.println(String(currentTime) + " Ding dong (TEST)!");
+  terminal.flush();
+  testButton = 0;
 }
 
 void ringDisplayFunc() {
@@ -146,11 +167,25 @@ void ringDisplayFunc() {
   }
 }
 
-BLYNK_WRITE(V2)
+BLYNK_WRITE(V8)
 {
   int pinData = param.asInt();
 
   if (pinData == 0)
+  {
+    pushNotificationStatus = 0;
+  }
+  else if (pinData == 1)
+  {
+    pushNotificationStatus = 1;
+  }
+}
+
+BLYNK_WRITE(V2)
+{
+  int pinData = param.asInt();
+
+  if (pinData == 1)
   {
     testButton = 1;
   }
@@ -189,6 +224,7 @@ BLYNK_WRITE(V4)
 
 void setClockTime()
 {
+
   if (year() != 1970) // Doesn't start until RTC is set correctly.
   {
 
