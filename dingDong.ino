@@ -22,7 +22,7 @@ bool runOnce;                           // Runs things once then runOnce = 0.
 bool testButton;                        // Debounced the test button.
 long ringTime;                          // Millis when doorbell last rang.
 String currentTime = "(RTC not set)";   // Current time formatted HH:MM:SSam Mon MM/DD.
-int bellRelay = 16;                     // WeMos D1 Mini pin D0 - connected to 24VAC relay NO contact.
+int bellRelay = 5;                      // WeMos D1 Mini pin D1 (heh) - connected to 24VAC relay NO dry contact.
 
 int currentRingMin, currentRingSec;     // How many min and sec since the last doorbell ring to display "X sec or X min ago."
 int ringDisplay;                        // Timer that counts min/sec since last doorbell ring. Turns off after ~5 minutes.
